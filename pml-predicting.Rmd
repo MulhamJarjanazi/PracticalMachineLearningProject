@@ -1,0 +1,82 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+Predicting using the PML dataset
+================================
+
+**1.** loading the training and test sets
+```{r}
+library(caret)
+data <- read.csv("pml-training.csv")
+finaltest <- read.csv("pml-testing.csv")
+
+names(data)
+```
+
+
+**2.** spliting data to training and testing sets
+```{r}
+inTrain <- createDataPartition(data$classe, p = 0.7, list = FALSE)
+training <- data[inTrain,]
+testing <- data[-inTrain,]
+
+dim(training)
+dim(testing)
+```
+
+**3.** excluding variables with variance near zero
+```{r}
+nzv <- nearZeroVar(training)
+training <- training[,-nzv]
+testing <- testing[,-nzv]
+```
+
+**4.** excluding variables that are mostly NA
+```{r}
+allNA <- sapply(training, function(x) mean(is.na(x)) > 0.95)
+training <- training[,allNA == FALSE]
+testing <- testing[,allNA == FALSE]
+dim(training)
+dim(testing)
+```
+
+
+
+**5.** excluding id variables (from 1 to 5)
+```{r}
+training <- training[,-(1:5)]
+testing <- testing[,-(1:5)]
+names(training)
+dim(training)
+```
+
+
+
+
+
+**5.** training a random forest model 
+```{r, cache=TRUE}
+set.seed(12345)
+controlRF <- trainControl(method = "cv", number = 3, verboseIter = FALSE)
+RFmodel <- train(classe ~ ., method = "rf", data = training, trControl = controlRF)
+```
+
+**6.** checking out-of-sample accuracy
+```{r}
+preds <- predict(RFmodel, testing)
+confusionMatrix(preds, testing$classe)
+```
+
+**7.** predicting the 20 test samples
+```{r}
+testpred <- predict(RFmodel, finaltest)
+testDF <- data.frame(id = seq(length(testpred)), class = testpred )
+testDF
+```
+
+
+
+
+
